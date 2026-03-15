@@ -1,5 +1,9 @@
-export interface filterOptions {
-  type: string;
-  minQualityP: number;
-  audioLanguage: string;
-}
+import { z } from "zod";
+
+export const filterOptionsSchema = z.object({
+  type: z.string().optional(),
+  minQualityP: z.number().optional(),
+  audioLanguage: z.string().optional(),
+});
+
+export type filterOptions = z.infer<typeof filterOptionsSchema>;
