@@ -7,7 +7,8 @@ if (!CINEPRO_URL) {
 }
 
 export async function getMovieSources(tmdbId: number) {
-  const endpoint = `${CINEPRO_URL}/v1/movie/${tmdbId}`;
+  const endpoint = `${CINEPRO_URL}/v1/movies/${tmdbId}`;
+
   const result = await tryCatch(fetch(endpoint));
 
   if (result.error) {
@@ -19,6 +20,7 @@ export async function getMovieSources(tmdbId: number) {
   }
 
   const json = await tryCatch<ApiResponse>(result.data.json());
+
   if (json.error) {
     console.error(`Failed to parse response for movie ${tmdbId}:`, json.error);
     return null;

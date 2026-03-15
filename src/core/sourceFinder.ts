@@ -2,44 +2,77 @@ import type { filterOptions } from "../types/filterOptions.js";
 import type { Source } from "../types/source.js";
 import { getMovieSources, getShowSources } from "./cineproService.js";
 
-async function getMovieSource(
+export async function getMovieSource(
   tmdbId: number,
-  filterOptions: filterOptions,
+  filterOptions: filterOptions | null,
 ): Promise<Source | null> {
   const sources = await getMovieSources(tmdbId);
   if (!sources) {
     return null;
   }
+  if (!filterOptions) {
+    return sources[0] || null;
+  }
 
-  const filteredSources = await filterSources(sources, filterOptions);
-  return filteredSources[0] || null;
+  const filteredSources = filterSources(sources, filterOptions);
+
+  // Sort descending by quality
+  const sortedSources = sortSources(filteredSources);
+  return sortedSources[0] || null;
 }
 
-async function getEpisodeSource(
+export async function getEpisodeSource(
   tmdbId: number,
   season: number,
   episode: number,
-  filterOptions: filterOptions,
+  filterOptions: filterOptions | null,
 ): Promise<Source | null> {
   const sources = await getShowSources(tmdbId, season, episode);
   if (!sources) {
     return null;
   }
 
+  if (!filterOptions) {
+    return sources[0] || null;
+  }
   const filteredSources = await filterSources(sources, filterOptions);
-  return filteredSources[0] || null;
+  const sortedSources = sortSources(filteredSources);
+  return sortedSources[0] || null;
 }
 
-async function filterSources(
-  sources: Source[],
-  options: filterOptions,
-): Promise<Source[]> {
+function sortSources(sources: Source[]): Source[] {
+  return sources.sort((a, b) => {
+    const qualityA = parseInt(a.quality.replace("p", ""));
+    const qualityB = parseInt(b.quality.replace("p", ""));
+    return qualityB - qualityA;
+  });
+}
+
+function filterSources(sources: Source[], options: filterOptions): Source[] {
   const { type, minQualityP, audioLanguage } = options;
   return sources.filter((src) => {
-    const qualityP = parseInt(src.quality.replace("p", ""));
-    const hasAudio = src.audioTracks.some(
-      (track) => track.language === audioLanguage,
-    );
-    return src.type === type && qualityP >= minQualityP && hasAudio;
+    let matches = true;
+
+    if (type != null) {
+      matches = matches && src.type === type;
+    }
+    if (minQualityP != null) {
+      const qualityP = parseInt(src.quality.replace("p", ""));
+      matches = matches && qualityP >= minQualityP;
+    }
+    if (audioLanguage != null) {
+      const hasAudio = src.audioTracks.some(
+        (track) => track.language === audioLanguage,
+      );
+      matches = matches && hasAudio;
+    }
+    if (options.providerWhitelist) {
+      matches = matches && options.providerWhitelist.includes(src.provider.id);
+    }
+    if (options.providerBlacklist) {
+      matches = matches && !options.providerBlacklist.includes(src.provider.id);
+    }
+
+    return matches;
   });
 }
